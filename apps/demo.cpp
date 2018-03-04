@@ -1,9 +1,12 @@
 #include <iostream>
+#include <fstream>
+#include <fstream>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/viz/vizcore.hpp>
 #include <kfusion/kinfu.hpp>
 #include <io/capture.hpp>
+
 
 using namespace kfusion;
 
@@ -60,9 +63,34 @@ struct KinFuApp
     void take_cloud(KinFu& kinfu)
     {
         cuda::DeviceArray<Point> cloud = kinfu.tsdf().fetchCloud(cloud_buffer);
+
         cv::Mat cloud_host(1, (int)cloud.size(), CV_32FC4);
         cloud.download(cloud_host.ptr<Point>());
+
         viz.showWidget("cloud", cv::viz::WCloud(cloud_host));
+        std::cout << cloud_host.col(cloud_host.cols-1).at<float>(0) << std::endl;
+
+        std::ofstream output_file("output_cloud.ply",std::ofstream::out);
+
+        output_file << "ply" << "\n";
+        output_file << "format ascii 1.0" << "\n";
+        output_file << "element vertex " << cloud_host.cols-1 << "\n";
+        output_file << "property float x" << "\n";
+        output_file << "property float y" << "\n";
+        output_file << "property float z" << "\n";
+        output_file << "property float red" << "\n";
+        output_file << "property float green" << "\n";
+        output_file << "property float blue" << "\n";
+        output_file << "end_header" << "\n";
+
+        for(int i = 0;i<cloud_host.cols;i++)
+            output_file << cloud_host.col(i).at<float>(0) << " " << cloud_host.col(i).at<float>(1) << " " << cloud_host.col(i).at<float>(2) << " 200 200 200" << "\n";
+
+        //std::cout << RobotRQuaternion.coeffs() << "\n";
+        //result rotation = RobotRMat (as Eigen::Matrix3D), rotation = RobotRQuaternion (as Eigen::Quaterniond) , translation = RobotTranslationVec (as Eigen::Vector3D), translation = TrackerTranslationVector (as double[3])
+
+        output_file.close();
+
         //viz.showWidget("cloud", cv::viz::WPaintedCloud(cloud_host));
     }
 
@@ -99,10 +127,10 @@ struct KinFuApp
 
             switch(key)
             {
-            case 't': case 'T' : take_cloud(kinfu); break;
-            case 'i': case 'I' : iteractive_mode_ = !iteractive_mode_; break;
-            case 27: exit_ = true; break;
-            case 32: pause_ = !pause_; break;
+                case 't': case 'T' : take_cloud(kinfu); break;
+                case 'i': case 'I' : iteractive_mode_ = !iteractive_mode_; break;
+                case 27: exit_ = true; break;
+                case 32: pause_ = !pause_; break;
             }
 
             //exit_ = exit_ || i > 100;
@@ -131,13 +159,14 @@ int main (int argc, char* argv[])
     int device = 0;
     cuda::setDevice (device);
     cuda::printShortCudaDeviceInfo (device);
+    cuda::printCudaDeviceInfo (device);
 
     if(cuda::checkIfPreFermiGPU(device))
         return std::cout << std::endl << "Kinfu is not supported for pre-Fermi GPU architectures, and not built for them by default. Exiting..." << std::endl, 1;
 
     OpenNISource capture;
-    capture.open (0);
-    //capture.open("d:/onis/20111013-224932.oni");
+    //capture.open (0);
+    capture.open("/home/mirec/OpenNI/Platform/Linux/Bin/x64-Release/mr.oni");
     //capture.open("d:/onis/reg20111229-180846.oni");
     //capture.open("d:/onis/white1.oni");
     //capture.open("/media/Main/onis/20111013-224932.oni");

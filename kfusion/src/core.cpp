@@ -17,7 +17,7 @@ int kf::cuda::getCudaEnabledDeviceCount()
         return 0;
 
     cudaSafeCall(error);
-    return count;  
+    return count;
 }
 
 void kf::cuda::setDevice(int device)
@@ -35,22 +35,22 @@ std::string kf::cuda::getDeviceName(int device)
 
 bool kf::cuda::checkIfPreFermiGPU(int device)
 {
-  if (device < 0)
-    cudaSafeCall( cudaGetDevice(&device) );
+    if (device < 0)
+        cudaSafeCall( cudaGetDevice(&device) );
 
-  cudaDeviceProp prop;
-  cudaSafeCall( cudaGetDeviceProperties(&prop, device) );
-  return prop.major < 2; // CC == 1.x
+    cudaDeviceProp prop;
+    cudaSafeCall( cudaGetDeviceProperties(&prop, device) );
+    return prop.major < 2; // CC == 1.x
 }
 
-namespace 
+namespace
 {
     template <class T> inline void getCudaAttribute(T *attribute, CUdevice_attribute device_attribute, int device)
     {
         *attribute = T();
         CUresult error = cuDeviceGetAttribute( attribute, device_attribute, device );
-        if( CUDA_SUCCESS == error ) 
-            return;        
+        if( CUDA_SUCCESS == error )
+            return;
 
         printf("Driver API error = %04d\n", error);
         kfusion::cuda::error("driver API error", __FILE__, __LINE__);
@@ -64,12 +64,14 @@ namespace
             int Cores;
         } SMtoCores;
 
-        SMtoCores gpuArchCoresPerSM[] =  { { 0x10,  8 }, { 0x11,  8 }, { 0x12,  8 }, { 0x13,  8 }, { 0x20, 32 }, { 0x21, 48 }, {0x30, 192}, {0x35, 192}, {0x50, 128}, {0x52, 128}, { -1, -1 }  };
-
+        SMtoCores gpuArchCoresPerSM[] = {
+                {0x10,   8}, {0x11,   8}, {0x12,   8}, {0x13,  8}, {0x20,  32}, {0x21, 48}, {0x30, 192},
+                {0x35, 192}, {0x50, 128}, {0x52, 128}, {0x60, 64}, {0x61, 128}, {-1, -1}
+        };
         int index = 0;
-        while (gpuArchCoresPerSM[index].SM != -1) 
+        while (gpuArchCoresPerSM[index].SM != -1)
         {
-            if (gpuArchCoresPerSM[index].SM == ((major << 4) + minor) ) 
+            if (gpuArchCoresPerSM[index].SM == ((major << 4) + minor) )
                 return gpuArchCoresPerSM[index].Cores;
             index++;
         }
@@ -94,46 +96,46 @@ void kf::cuda::printCudaDeviceInfo(int device)
     cudaSafeCall( cudaRuntimeGetVersion(&runtimeVersion) );
 
     const char *computeMode[] = {
-        "Default (multiple host threads can use ::cudaSetDevice() with device simultaneously)",
-        "Exclusive (only one host thread in one process is able to use ::cudaSetDevice() with this device)",
-        "Prohibited (no host thread can use ::cudaSetDevice() with this device)",
-        "Exclusive Process (many threads in one process is able to use ::cudaSetDevice() with this device)",
-        "Unknown",
-        NULL
+            "Default (multiple host threads can use ::cudaSetDevice() with device simultaneously)",
+            "Exclusive (only one host thread in one process is able to use ::cudaSetDevice() with this device)",
+            "Prohibited (no host thread can use ::cudaSetDevice() with this device)",
+            "Exclusive Process (many threads in one process is able to use ::cudaSetDevice() with this device)",
+            "Unknown",
+            NULL
     };
 
     for(int dev = beg; dev < end; ++dev)
-    {                
+    {
         cudaDeviceProp prop;
         cudaSafeCall( cudaGetDeviceProperties(&prop, dev) );
 
         int sm_cores = convertSMVer2Cores(prop.major, prop.minor);
 
-        printf("\nDevice %d: \"%s\"\n", dev, prop.name);        
+        printf("\nDevice %d: \"%s\"\n", dev, prop.name);
         printf("  CUDA Driver Version / Runtime Version          %d.%d / %d.%d\n", driverVersion/1000, driverVersion%100, runtimeVersion/1000, runtimeVersion%100);
-        printf("  CUDA Capability Major/Minor version number:    %d.%d\n", prop.major, prop.minor);        
-        printf("  Total amount of global memory:                 %.0f MBytes (%llu bytes)\n", (float)prop.totalGlobalMem/1048576.0f, (unsigned long long) prop.totalGlobalMem);            
+        printf("  CUDA Capability Major/Minor version number:    %d.%d\n", prop.major, prop.minor);
+        printf("  Total amount of global memory:                 %.0f MBytes (%llu bytes)\n", (float)prop.totalGlobalMem/1048576.0f, (unsigned long long) prop.totalGlobalMem);
         printf("  (%2d) Multiprocessors x (%2d) CUDA Cores/MP:     %d CUDA Cores\n", prop.multiProcessorCount, sm_cores, sm_cores * prop.multiProcessorCount);
         printf("  GPU Clock Speed:                               %.2f GHz\n", prop.clockRate * 1e-6f);
 
 #if (CUDART_VERSION >= 4000)
         // This is not available in the CUDA Runtime API, so we make the necessary calls the driver API to support this for output
         int memoryClock, memBusWidth, L2CacheSize;
-        getCudaAttribute<int>( &memoryClock, CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE, dev );        
-        getCudaAttribute<int>( &memBusWidth, CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH, dev );                
+        getCudaAttribute<int>( &memoryClock, CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE, dev );
+        getCudaAttribute<int>( &memBusWidth, CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH, dev );
         getCudaAttribute<int>( &L2CacheSize, CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE, dev );
 
         printf("  Memory Clock rate:                             %.2f Mhz\n", memoryClock * 1e-3f);
         printf("  Memory Bus Width:                              %d-bit\n", memBusWidth);
         if (L2CacheSize)
             printf("  L2 Cache Size:                                 %d bytes\n", L2CacheSize);
-        
+
         printf("  Max Texture Dimension Size (x,y,z)             1D=(%d), 2D=(%d,%d), 3D=(%d,%d,%d)\n",
-            prop.maxTexture1D, prop.maxTexture2D[0], prop.maxTexture2D[1],
-            prop.maxTexture3D[0], prop.maxTexture3D[1], prop.maxTexture3D[2]);
+               prop.maxTexture1D, prop.maxTexture2D[0], prop.maxTexture2D[1],
+               prop.maxTexture3D[0], prop.maxTexture3D[1], prop.maxTexture3D[2]);
         printf("  Max Layered Texture Size (dim) x layers        1D=(%d) x %d, 2D=(%d,%d) x %d\n",
-            prop.maxTexture1DLayered[0], prop.maxTexture1DLayered[1],
-            prop.maxTexture2DLayered[0], prop.maxTexture2DLayered[1], prop.maxTexture2DLayered[2]);
+               prop.maxTexture1DLayered[0], prop.maxTexture1DLayered[1],
+               prop.maxTexture2DLayered[0], prop.maxTexture2DLayered[1], prop.maxTexture2DLayered[2]);
 #endif
         printf("  Total amount of constant memory:               %u bytes\n", (int)prop.totalConstMem);
         printf("  Total amount of shared memory per block:       %u bytes\n", (int)prop.sharedMemPerBlock);
@@ -165,12 +167,12 @@ void kf::cuda::printCudaDeviceInfo(int device)
         printf("  Compute Mode:\n");
         printf("      %s \n", computeMode[prop.computeMode]);
     }
-    
-    printf("\n");    
+
+    printf("\n");
     printf("deviceQuery, CUDA Driver = CUDART");
     printf(", CUDA Driver Version  = %d.%d", driverVersion / 1000, driverVersion % 100);
     printf(", CUDA Runtime Version = %d.%d", runtimeVersion/1000, runtimeVersion%100);
-    printf(", NumDevs = %d\n\n", count);                
+    printf(", NumDevs = %d\n\n", count);
     fflush(stdout);
 }
 
@@ -187,13 +189,13 @@ void kf::cuda::printShortCudaDeviceInfo(int device)
     cudaSafeCall( cudaRuntimeGetVersion(&runtimeVersion) );
 
     for(int dev = beg; dev < end; ++dev)
-    {                
+    {
         cudaDeviceProp prop;
         cudaSafeCall( cudaGetDeviceProperties(&prop, dev) );
 
         const char *arch_str = prop.major < 2 ? " (pre-Fermi)" : "";
-        printf("Device %d:  \"%s\"  %.0fMb", dev, prop.name, (float)prop.totalGlobalMem/1048576.0f);                
-        printf(", sm_%d%d%s, %d cores", prop.major, prop.minor, arch_str, convertSMVer2Cores(prop.major, prop.minor) * prop.multiProcessorCount);                
+        printf("Device %d:  \"%s\"  %.0fMb", dev, prop.name, (float)prop.totalGlobalMem/1048576.0f);
+        printf(", sm_%d%d%s, %d cores", prop.major, prop.minor, arch_str, convertSMVer2Cores(prop.major, prop.minor) * prop.multiProcessorCount);
         printf(", Driver/Runtime ver.%d.%d/%d.%d\n", driverVersion/1000, driverVersion%100, runtimeVersion/1000, runtimeVersion%100);
     }
     fflush(stdout);

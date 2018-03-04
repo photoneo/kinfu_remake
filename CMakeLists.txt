@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.8)
 
 # ---[ Configurations types
+set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Possible configurations" FORCE)
 if (DEFINED CMAKE_BUILD_TYPE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${CMAKE_CONFIGURATION_TYPES})
@@ -29,7 +30,7 @@ endif()
 # ---[ cuda settings
 set(HAVE_CUDA 1)
 #list(APPEND CUDA_NVCC_FLAGS "-arch;compute_20")
-list(APPEND CUDA_NVCC_FLAGS "-gencode;arch=compute_20,code=sm_20;-gencode;arch=compute_20,code=sm_21;-gencode;arch=compute_30,code=sm_30;-gencode;arch=compute_35,code=sm_35;-gencode;arch=compute_50,code=sm_50")
+list(APPEND CUDA_NVCC_FLAGS "-gencode;arch=compute_20,code=sm_20;-gencode;arch=compute_20,code=sm_21;-gencode;arch=compute_30,code=sm_30;-gencode;arch=compute_35,code=sm_35;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_61,code=sm_61;")
 
 if(UNIX OR APPLE)
   list(APPEND CUDA_NVCC_FLAGS "-Xcompiler;-fPIC;")
