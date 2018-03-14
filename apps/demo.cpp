@@ -6,6 +6,7 @@
 #include <opencv2/viz/vizcore.hpp>
 #include <kfusion/kinfu.hpp>
 #include <io/capture.hpp>
+#include "rply.h"
 
 
 using namespace kfusion;
@@ -139,6 +140,32 @@ struct KinFuApp
         return true;
     }
 
+    static int vertex_cb(p_ply_argument argument) {
+        long eol;
+        ply_get_argument_user_data(argument, NULL, &eol);
+        //printf("%g", ply_get_argument_value(argument));
+        //if (eol) printf("\n");
+        //else printf(" ");
+        return 1;
+    }
+
+    static int face_cb(p_ply_argument argument) {
+        long length, value_index;
+        ply_get_argument_property(argument, NULL, &length, &value_index);
+        switch (value_index) {
+            case 0:
+            case 1:
+                printf("%g ", ply_get_argument_value(argument));
+                break;
+            case 2:
+                printf("%g\n", ply_get_argument_value(argument));
+                break;
+            default:
+                break;
+        }
+        return 1;
+    }
+
     bool pause_ /*= false*/;
     bool exit_, iteractive_mode_;
     OpenNISource& capture_;
@@ -153,6 +180,8 @@ struct KinFuApp
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//* READING PLY *//
+
 
 int main (int argc, char* argv[])
 {
@@ -166,7 +195,7 @@ int main (int argc, char* argv[])
 
     OpenNISource capture;
     //capture.open (0);
-    capture.open("/home/mirec/OpenNI/Platform/Linux/Bin/x64-Release/mr.oni");
+    //capture.open("/home/mirec/OpenNI/Platform/Linux/Bin/x64-Release/mr.oni");
     //capture.open("d:/onis/reg20111229-180846.oni");
     //capture.open("d:/onis/white1.oni");
     //capture.open("/media/Main/onis/20111013-224932.oni");
@@ -176,10 +205,22 @@ int main (int argc, char* argv[])
 
     KinFuApp app (capture);
 
+    long nvertices, ntriangles;
+    p_ply ply = ply_open("/home/mirec/catkin_ws/clouds/cloud_from_phoxi/cloud1.ply", NULL, 0, NULL);
+    if (!ply) return 1;
+    if (!ply_read_header(ply)) return 1;
+    nvertices = ply_set_read_cb(ply, "vertex", "x", app.vertex_cb, NULL, 0);
+    ply_set_read_cb(ply, "vertex", "y", app.vertex_cb, NULL, 0);
+    ply_set_read_cb(ply, "vertex", "z", app.vertex_cb, NULL, 1);
+    printf("%ld\n", nvertices);
+    if (!ply_read(ply)) return 1;
+    ply_close(ply);
+
+
     // executing
-    try { app.execute (); }
-    catch (const std::bad_alloc& /*e*/) { std::cout << "Bad alloc" << std::endl; }
-    catch (const std::exception& /*e*/) { std::cout << "Exception" << std::endl; }
+    //try { app.execute (); }
+    //catch (const std::bad_alloc& /*e*/) { std::cout << "Bad alloc" << std::endl; }
+    //catch (const std::exception& /*e*/) { std::cout << "Exception" << std::endl; }
 
     return 0;
 }

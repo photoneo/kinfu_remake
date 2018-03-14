@@ -1,6 +1,6 @@
 include_directories(${CMAKE_SOURCE_DIR}/kfusion/include)
 
-file(GLOB srcs *.cpp *.hpp)
+file(GLOB srcs *.cpp *.hpp *.c *.h)
 add_executable(demo ${srcs})
 target_link_libraries(demo ${OpenCV_LIBS} kfusion)
 
