@@ -159,7 +159,7 @@ double ply_get_argument_value(p_ply_argument argument);
  *
  * Returns 1 if successfull, 0 otherwise
  * ---------------------------------------------------------------------- */
-int ply_read(p_ply ply);
+int ply_read(p_ply ply, long *n_instances);
 
 /* ----------------------------------------------------------------------
  * Iterates over all elements by returning the next element.

@@ -438,7 +438,7 @@ long ply_set_read_cb(p_ply ply, const char *element_name,
     return (int) element->ninstances;
 }
 
-int ply_read(p_ply ply) {
+int ply_read(p_ply ply, long *n_instances) {
     long i;
     p_ply_argument argument;
     assert(ply && ply->fp && ply->io_mode == PLY_READ);
@@ -449,6 +449,10 @@ int ply_read(p_ply ply) {
         argument->element = element;
         if (!ply_read_element(ply, element, argument))
             return 0;
+
+        if (i == 0){
+            *n_instances = element->ninstances;
+        }
     }
     return 1;
 }

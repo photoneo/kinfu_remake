@@ -1,4 +1,6 @@
 include_directories(${CMAKE_SOURCE_DIR}/kfusion/include)
+set (CMAKE_CXX_STANDARD 11)
+
 
 file(GLOB srcs *.cpp *.hpp *.c *.h)
 add_executable(demo ${srcs})
