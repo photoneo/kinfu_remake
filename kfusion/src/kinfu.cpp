@@ -6,7 +6,57 @@ using namespace kfusion;
 using namespace kfusion::cuda;
 
 static inline float deg2rad (float alpha) { return alpha * 0.017453293f; }
+/*
+kfusion::KinFuParams kfusion::KinFuParams::default_params()
+{
+    const int iters[] = {10, 5, 4, 0};
+    const int levels = sizeof(iters)/sizeof(iters[0]);
 
+    KinFuParams p;
+/*
+    float focal_length_x_ = 2255.313614;
+    float focal_length_y_ = 2256.141281;
+    float principal_point_x_ = 1038.124619;
+    float principal_point_y_ = 771.101;*/
+
+    float focal_length_x_ = 1824.885927;
+    float focal_length_y_ = 1824.728925;
+    float principal_point_x_ = 878.237084;
+    float principal_point_y_ = 594.768363;
+
+/*
+    //p.cols = 2064;  //pixels
+    //p.rows = 1544;  //pixels
+    p.cols = 1120;
+    p.rows = 800;
+    p.intr = Intr(focal_length_x_,focal_length_y_, principal_point_x_, principal_point_y_);
+
+    p.volume_dims = Vec3i::all(512);  //number of voxels
+    p.volume_size = Vec3f::all(3.f);  //meters
+    p.volume_pose = Affine3f().translate(Vec3f(-p.volume_size[0]/2, -p.volume_size[1]/2, 0.5f));
+
+    p.bilateral_sigma_depth = 0.05f;  //meter
+    p.bilateral_sigma_spatial = 4.5; //pixels
+    p.bilateral_kernel_size = 7;     //pixels
+
+    p.icp_truncate_depth_dist = 0.f;        //meters, disabled
+    p.icp_dist_thres = 0.1f;                //meters
+    p.icp_angle_thres = deg2rad(30.f); //radians
+    p.icp_iter_num.assign(iters, iters + levels);
+
+    p.tsdf_min_camera_movement = 0.f; //meters, disabled
+    p.tsdf_trunc_dist = 0.04f; //meters;
+    p.tsdf_max_weight = 64;   //frames
+
+    p.raycast_step_factor = 0.75f;  //in voxel sizes
+    p.gradient_delta_factor = 0.5f; //in voxel sizes
+
+    //p.light_pose = p.volume_pose.translation()/4; //meters
+    p.light_pose = Vec3f::all(0.f); //meters
+
+    return p;
+}
+*/
 kfusion::KinFuParams kfusion::KinFuParams::default_params()
 {
     const int iters[] = {10, 5, 4, 0};
@@ -144,6 +194,7 @@ bool kfusion::KinFu::operator()(const kfusion::cuda::Depth& depth, const kfusion
 {
     const KinFuParams& p = params_;
     const int LEVELS = icp_->getUsedLevelsNum();
+    //std::cout << "LEVELS:" << LEVELS << std::endl;
 
     cuda::computeDists(depth, dists_, p.intr);
     cuda::depthBilateralFilter(depth, curr_.depth_pyr[0], p.bilateral_kernel_size, p.bilateral_sigma_spatial, p.bilateral_sigma_depth);
@@ -185,9 +236,16 @@ bool kfusion::KinFu::operator()(const kfusion::cuda::Depth& depth, const kfusion
         bool ok = icp_->estimateTransform(affine, p.intr, curr_.depth_pyr, curr_.normals_pyr, prev_.depth_pyr, prev_.normals_pyr);
 #else
         bool ok = icp_->estimateTransform(affine, p.intr, curr_.points_pyr, curr_.normals_pyr, prev_.points_pyr, prev_.normals_pyr);
+
 #endif
-        if (!ok)
+        if (!ok) {
+            cout << "cannot icp" << endl;
             return reset(), false;
+        }
+        else{
+            cout << "succesfull icp" << endl;
+        }
+
     }
 
     poses_.push_back(poses_.back() * affine); // curr -> global
