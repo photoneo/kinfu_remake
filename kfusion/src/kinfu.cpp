@@ -5,33 +5,30 @@ using namespace std;
 using namespace kfusion;
 using namespace kfusion::cuda;
 
+//#define USE_DEPTH
+
 static inline float deg2rad (float alpha) { return alpha * 0.017453293f; }
-/*
+
 kfusion::KinFuParams kfusion::KinFuParams::default_params()
 {
     const int iters[] = {10, 5, 4, 0};
     const int levels = sizeof(iters)/sizeof(iters[0]);
 
     KinFuParams p;
-/*
-    float focal_length_x_ = 2255.313614;
-    float focal_length_y_ = 2256.141281;
-    float principal_point_x_ = 1038.124619;
-    float principal_point_y_ = 771.101;*/
 
-    float focal_length_x_ = 1824.885927;
-    float focal_length_y_ = 1824.728925;
-    float principal_point_x_ = 878.237084;
-    float principal_point_y_ = 594.768363;
+    float focal_length_x_ =    1824.885927 / 3.0*2.0;
+    float focal_length_y_ =    1824.728925 / 3.0*2.0;
+    float principal_point_x_ = 878.237084 / 3.0*2.0;
+    float principal_point_y_ = 594.768363 / 3.0*2.0;
 
-/*
+
     //p.cols = 2064;  //pixels
     //p.rows = 1544;  //pixels
     p.cols = 1120;
     p.rows = 800;
     p.intr = Intr(focal_length_x_,focal_length_y_, principal_point_x_, principal_point_y_);
 
-    p.volume_dims = Vec3i::all(512);  //number of voxels
+    p.volume_dims = Vec3i::all(1024);  //number of voxels
     p.volume_size = Vec3f::all(3.f);  //meters
     p.volume_pose = Affine3f().translate(Vec3f(-p.volume_size[0]/2, -p.volume_size[1]/2, 0.5f));
 
@@ -56,7 +53,7 @@ kfusion::KinFuParams kfusion::KinFuParams::default_params()
 
     return p;
 }
-*/
+/*
 kfusion::KinFuParams kfusion::KinFuParams::default_params()
 {
     const int iters[] = {10, 5, 4, 0};
@@ -93,7 +90,7 @@ kfusion::KinFuParams kfusion::KinFuParams::default_params()
 
     return p;
 }
-
+*/
 kfusion::KinFu::KinFu(const KinFuParams& params) : frame_counter_(0), params_(params)
 {
     CV_Assert(params.volume_dims[0] % 32 == 0);
@@ -239,7 +236,7 @@ bool kfusion::KinFu::operator()(const kfusion::cuda::Depth& depth, const kfusion
 
 #endif
         if (!ok) {
-            cout << "cannot icp" << endl;
+            cout << "i cannot icp" << endl;
             return reset(), false;
         }
         else{

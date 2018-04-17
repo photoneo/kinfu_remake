@@ -5,11 +5,12 @@ set (CMAKE_CXX_STANDARD 11)
 #demo
 
 find_package(PhoXi REQUIRED CONFIG PATHS "$ENV{PHOXI_CONTROL_PATH}")
+find_package(OpenCV REQUIRED)
 file(GLOB srcs demo.cpp *.hpp *.c *.h)
 include_directories(${PHOXI_INCLUDE_DIRS})
 
 add_executable(demo ${srcs})
-target_link_libraries(demo ${OpenCV_LIBS} kfusion ${PHOXI_LIBRARY})
+target_link_libraries(demo ${OpenCV_LIBS} ${OpenCV_calib3d} kfusion ${PHOXI_LIBRARY})
 
 set_target_properties(demo PROPERTIES
     DEBUG_POSTFIX "d"
@@ -28,7 +29,7 @@ include_directories(${PHOXI_INCLUDE_DIRS})
 
 
 add_executable(demo2 ${srcs2})
-target_link_libraries(demo2 ${OpenCV_LIBS} kfusion ${PHOXI_LIBRARY})
+target_link_libraries(demo2 ${OpenCV_LIBS} kfusion ${PHOXI_LIBRARY} )
 
 set_target_properties(demo2 PROPERTIES
         DEBUG_POSTFIX "d"

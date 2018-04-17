@@ -5,12 +5,20 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/viz/vizcore.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/viz/vizcore.hpp>
 #include <kfusion/kinfu.hpp>
 #include <io/capture.hpp>
 #include <PhoXi.h>
+/*
+#include "/home/mirec/PhotoneoMain_REPO/Common/PhoLibraryExport.h"
+#include "/home/mirec/PhotoneoMain_REPO/Common/FileSystemTool/PathGenerator.h"
+#include "/home/mirec/PhotoneoMain_REPO/Common/Duration.h"
+#include "/home/mirec/PhotoneoMain_REPO/Common/CameraCalibration/PhotoneoCameraCalibration.h"*/
 #include <PhoXiInterface.h>
 #include <PhoXiDataTypes.h>
 #include "rply.h"
+
 
 //#include "CameraCalibration/PhotoneoCameraCalibrationTool.h"
 
@@ -151,9 +159,21 @@ struct KinFuApp
 
 
 /*---------------------------------------------------------------------------------------*/
-/*
+    void Project3DPointsToImagePoints(cv::InputArray ObjectPoints,
+                                                                   cv::OutputArray ImagePoints,
+                                                                   bool WorldCoordinate,cv::Mat CameraMatrix) const {
+        std::vector<float> DistortionCoefficients;
+        cv::projectPoints(ObjectPoints,
+                              cv::Mat::zeros(3, 1, cv::DataType<float>::type),
+                              cv::Mat::zeros(3, 1, cv::DataType<float>::type),
+                              CameraMatrix,
+                              DistortionCoefficients,
+                              ImagePoints);
+
+    }
     template<class T>
-    bool ReprojectToDepthMap(const photoneoTools::CameraCalibration<T>& cameraCalibration, cv::Mat& InputCloud, const cv::Size& OutputResolution, cv::Mat& OutputDepthMap, const cv::Mat& InputTexture, cv::Mat& OutputTexture, T IntegrationThreshold) {
+    bool ReprojectToDepthMap(cv::Mat& cameraMatrix,
+            /*const photoneoTools::CameraCalibration<T>& cameraCalibration*/ cv::Mat& InputCloud, const cv::Size& OutputResolution, cv::Mat& OutputDepthMap, const cv::Mat& InputTexture, cv::Mat& OutputTexture, T IntegrationThreshold) {
         std::vector<cv::Point_<T>> ProjectedCoordinates;
         cv::Mat InputCloudRaw = InputCloud;
         cv::Mat InputCloudWorking = InputCloudRaw;
@@ -161,9 +181,11 @@ struct KinFuApp
             InputCloudWorking = InputCloudRaw.reshape(3, InputCloudRaw.size().area());
         }
 
-        cameraCalibration.Project3DPointsToImagePoints(InputCloudWorking, ProjectedCoordinates, false);
+        Project3DPointsToImagePoints(InputCloudWorking, ProjectedCoordinates, false,cameraMatrix);
 
-        cv::Size_<T> OutputResolutionInternal = (cv::Size_<T>)OutputResolution;
+        cv::Size_<T> OutputResolutionInternal;
+        OutputResolutionInternal.width = OutputResolution.width;
+        OutputResolutionInternal.height = OutputResolution.height;
         OutputResolutionInternal.width -= (T)1.0;
         OutputResolutionInternal.height -= (T)1.0;
 
@@ -251,37 +273,27 @@ struct KinFuApp
         return true;
     }
 
-
-    bool Scan(pho::api::PPhoXi PhoXiDevice, int index, SensorData& sd)
+    bool Scan(cv::Mat& depthxxx/*pho::api::PPhoXi PhoXiDevice, int index, SensorData& sd*/)
     {
         std::cout << "Triggering the " << "1" << "-th frame" << std::endl;
         std::string CustomMessage = "Hello World - Software Trigger Frame Number: 1";
         //int FrameID = PhoXiDevice->TriggerFrame(true, false, CustomMessage);
-        int FrameID = PhoXiDevice->TriggerFrame(true,false);
-        if (FrameID < 0) {
-            //If negative number is returned trigger was unsuccessful
-            std::cout << "Trigger was unsuccessful!" << std::endl;
-            return false;
-        }
-        else {
-            std::cout << "Frame was triggered, Frame Id: " << FrameID << std::endl;
-        }
-        std::cout << "Waiting for frame 1" << std::endl;
-        pho::api::PFrame Frame = PhoXiDevice->GetSpecificFrame(FrameID, pho::api::PhoXiTimeout::Infinity);
-        if (Frame) {
-            std::cout << "Frame retrieved" << std::endl;
+        //int FrameID = PhoXiDevice->TriggerFrame(true,false);
+        if (true) {
+            /*std::cout << "Frame retrieved" << std::endl;
             std::cout << "    Sensor Position: " << Frame->Info.SensorPosition.x << "; " << Frame->Info.SensorPosition.y << "; " << Frame->Info.SensorPosition.z << std::endl;
             //std::cout << "    Frame Custom Message: " << Frame->CustomMessage << std::endl;
 
 
-            pho::api::PhoXiRawAccessHandler RawAccessHandler(PhoXiDevice);
+            //pho::api::PhoXiRawAccessHandler RawAccessHandler(PhoXiDevice);
 
 
-            pho::PDataManager WholeDM = RawAccessHandler.GetLastOutput();
-            if (WholeDM) {
+            //pho::PDataManager WholeDM = RawAccessHandler.GetLastOutput();
+            //if (WholeDM) {
+            if(true){
                 std::cout << "DM ok" << std::endl;
 
-                double FrameTimestamp = -1;
+                /*double FrameTimestamp = -1;
                 std::string FrameStartTimePath = "User/FrameStartTime.double";
                 if (WholeDM->isExistingLeaf(FrameStartTimePath) && !WholeDM->operator[](FrameStartTimePath).isNull()) {
                     FrameTimestamp = WholeDM->GetLeaf(FrameStartTimePath).Ref<double>();
@@ -292,16 +304,34 @@ struct KinFuApp
                 else {
                     std::cout << "FrameTimestamp missing!!!" << std::endl;
                     return false;
+                }*/
+
+
+                pho::api::PFrame frame = scanner->GetSpecificFrame(scanner->TriggerFrame());
+                if (!(((bool)frame) && (frame->Successful))){
+                    printf ("no depth\n");
+                    return false;
                 }
 
-                cv::Mat Texture = WholeDM->GetLeaf(TexturePath).Ref<cv::Mat>();
-                sd.m_colorWidth = Texture.cols;
-                sd.m_colorHeight = Texture.rows;
+                //cv::Mat Texture = WholeDM->GetLeaf(TexturePath).Ref<cv::Mat>();
+                cv::Mat Texture;
+                cv::Mat(frame->Texture.Size.Height, frame->Texture.Size.Width, CV_32FC1, (void*)frame->Texture.GetDataPtr()).copyTo(Texture);
+                //sd.m_colorWidth = Texture.cols;
+                //sd.m_colorHeight = Texture.rows;
                 std::cout << "Texture rows:" << Texture.rows << std::endl;
-                cv::Mat Depth = WholeDM->GetLeaf(DepthPath).Ref<cv::Mat>();
-                cv::Mat PointCloud = WholeDM->GetLeaf(PointCloudPath).Ref<cv::Mat>();
-                photoneoTools::CameraCalibration32 cameraCalibration;
-                cameraCalibration.SetCameraMatrix(1824.885927 / 3.0*2.0, 1824.728925 / 3.0*2.0, 878.237084 / 3.0*2.0, 594.768363 / 3.0*2.0);
+                cv::Mat Depth; //= WholeDM->GetLeaf(DepthPath).Ref<cv::Mat>();
+                cv::Mat(frame->DepthMap.Size.Height, frame->DepthMap.Size.Width, CV_32FC1, (void*)frame->DepthMap.GetDataPtr()).copyTo(Depth);
+
+                cv::Mat PointCloud;//= WholeDM->GetLeaf(PointCloudPath).Ref<cv::Mat>();
+                cv::Mat(frame->PointCloud.Size.Height, frame->PointCloud.Size.Width, CV_32FC3, (void*)frame->PointCloud.GetDataPtr()).copyTo(PointCloud);
+
+                //photoneoTools::CameraCalibration32 cameraCalibration;
+                //cameraCalibration.SetCameraMatrix(1824.885927 / 3.0*2.0, 1824.728925 / 3.0*2.0, 878.237084 / 3.0*2.0, 594.768363 / 3.0*2.0);
+                cv::Mat CameraMatrix = cv::Mat::eye(3,3,CV_32FC1);
+                CameraMatrix.at<float>(0,0) = 1824.885927 / 3.0*2.0; //fx
+                CameraMatrix.at<float>(1,1) = 1824.728925 / 3.0*2.0;//fy
+                CameraMatrix.at<float>(0,2) = 878.237084 / 3.0*2.0; //cx
+                CameraMatrix.at<float>(1,2) = 594.768363 / 3.0*2.0; //cy
 
                 cv::Mat Texture32In;
                 Texture.convertTo(Texture32In, CV_32F);
@@ -309,10 +339,15 @@ struct KinFuApp
 
                 std::cout << Depth.size() << std::endl;
 
-                if (!ReprojectToDepthMap<float>(cameraCalibration, PointCloud, Depth.size(), Depth, Texture32In, Texture32Out, 0.005)){
+                if (!ReprojectToDepthMap<float>(CameraMatrix, PointCloud, Depth.size(), Depth, Texture32In, Texture32Out, 0.005)){
                     std::cout << "nevyslo to" << std::endl;
                 }
                 std::cout << Depth.size() << std::endl;
+
+                Depth.convertTo(depthxxx, CV_16U);
+
+                //depthxxx = Depth;
+            /*
 
                 std::cout << "TextureOut rows: " << Texture32Out.rows << std::endl;
 
@@ -332,7 +367,6 @@ struct KinFuApp
                 sd.m_intrinsic(1, 2) = 594.768363 / 3.0*2.0;
 
                 RGBDFrame frame;
-
 
                 cv::Mat texRGB(Texture.rows, Texture.cols, CV_8UC3);
                 cv::Mat tex(Texture.rows, Texture.cols, CV_8U);
@@ -357,17 +391,9 @@ struct KinFuApp
 
                 cv::imshow("tex", texRGB);
                 cv::waitKey(20);
-            }
-            else {
-                std::cout << "WholeDM = 0" << std::endl;
-                return false;
+                */
             }
 
-        }
-        else {
-            std::cout << "Failed to retrieve the frame!";
-            return false;
-        }
         return true;
     }
 
@@ -426,7 +452,7 @@ struct KinFuApp
         return nullptr;
     }
 
-    void JanTest()
+    /*void JanTest()
     {
         std::cout << "Start" << std::endl;
         std::cout << sizeof(cv::Matx44f) << std::endl;
@@ -441,6 +467,7 @@ struct KinFuApp
         for (size_t i = 0;; i++)
         {
             if (!Scan(PhoXiDevice, i, sd)) break;
+
         }
 
         sd.m_frames[0].m_cameraToWorld = cv::Matx44f::eye();
@@ -450,12 +477,11 @@ struct KinFuApp
 
         PhoXiDevice->StopAcquisition();
         PhoXiDevice->Disconnect();
-    }
-*/
+    }*/
+
     bool grab(cv::Mat& depth)
     {
         pho::api::PFrame frame = scanner->GetSpecificFrame(scanner->TriggerFrame());
-
         if (((bool)frame) && (frame->Successful))
         {
             std::cout << "cloud size" << frame->PointCloud.Size.Height << std::endl;
@@ -534,7 +560,7 @@ struct KinFuApp
 
         cv::Mat cloud_host(1, (int)cloud.size(), CV_32FC4);
         cloud.download(cloud_host.ptr<Point>());
-        viz.showWidget("cloud", cv::viz::WCloud(cloud_host));
+        //viz.showWidget("cloud", cv::viz::WCloud(cloud_host));
         std::cout << cloud_host.col(cloud_host.cols-1).at<float>(0) << std::endl;
 
         std::ofstream output_file("output_cloud.ply",std::ofstream::out);
@@ -573,7 +599,8 @@ struct KinFuApp
 
 
             //obtaining dept image
-            bool has_frame = grab(depth);
+            //bool has_frame = grab(depth);
+            bool has_frame = Scan(depth);
 
             if (!has_frame){
                 return std::cout << "Can't grab depth" << std::endl, false;
@@ -615,19 +642,6 @@ struct KinFuApp
             viz.spinOnce(3, true);
         }
         return true;
-    }
-
-    static int vertex_X(p_ply_argument argument) {
-        long eol;
-
-        ply_get_argument_user_data(argument, NULL, &eol);
-
-        //printf("%g", ply_get_argument_value(argument));
-        //if (eol) printf("\n");
-        //else printf(" ");
-        //this->cloud.col(2).at<float>(0);
-
-        return 1;
     }
 
     bool pause_ /*= false*/;
