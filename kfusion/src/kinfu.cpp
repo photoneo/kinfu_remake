@@ -8,7 +8,7 @@ using namespace kfusion::cuda;
 //#define USE_DEPTH
 
 static inline float deg2rad (float alpha) { return alpha * 0.017453293f; }
-
+#define USE_ROBOT_TRANSFORMATION
 kfusion::KinFuParams kfusion::KinFuParams::default_params()
 {
     const int iters[] = {10, 5, 4, 0};
@@ -22,10 +22,10 @@ kfusion::KinFuParams kfusion::KinFuParams::default_params()
     float principal_point_y_ = 594.768363 / 3.0*2.0;
 
 
-    //p.cols = 2064;  //pixels
-    //p.rows = 1544;  //pixels
-    p.cols = 1120;
-    p.rows = 800;
+    p.cols = 2064;  //pixels
+    p.rows = 1544;  //pixels
+    //p.cols = 1120;
+    //p.rows = 800;
     p.intr = Intr(focal_length_x_,focal_length_y_, principal_point_x_, principal_point_y_);
 
     p.volume_dims = Vec3i::all(1024);  //number of voxels
@@ -187,7 +187,7 @@ kfusion::Affine3f kfusion::KinFu::getCameraPose (int time) const
     return poses_[time];
 }
 
-bool kfusion::KinFu::operator()(const kfusion::cuda::Depth& depth, const kfusion::cuda::Image& /*image*/)
+bool kfusion::KinFu::operator()(const kfusion::cuda::Depth& depth,  Affine3f input_transformation, const kfusion::cuda::Image&/*image*/)
 {
     const KinFuParams& p = params_;
     const int LEVELS = icp_->getUsedLevelsNum();
@@ -229,20 +229,29 @@ bool kfusion::KinFu::operator()(const kfusion::cuda::Depth& depth, const kfusion
     Affine3f affine; // cuur -> prev
     {
         //ScopeTime time("icp");
-#if defined USE_DEPTH
-        bool ok = icp_->estimateTransform(affine, p.intr, curr_.depth_pyr, curr_.normals_pyr, prev_.depth_pyr, prev_.normals_pyr);
+#if defined USE_ROBOT_TRANSFORMATION
+
+        affine = input_transformation;
+        cout << "Using robot transformation" << endl;
+        std::cout << affine.translation() << std::endl;
 #else
-        bool ok = icp_->estimateTransform(affine, p.intr, curr_.points_pyr, curr_.normals_pyr, prev_.points_pyr, prev_.normals_pyr);
+
+    #if defined USE_DEPTH
+            bool ok = icp_->estimateTransform(affine, p.intr, curr_.depth_pyr, curr_.normals_pyr, prev_.depth_pyr, prev_.normals_pyr);
+    #else
+            bool ok = icp_->estimateTransform(affine, p.intr, curr_.points_pyr, curr_.normals_pyr, prev_.points_pyr, prev_.normals_pyr);
+
+    #endif
+            if (!ok) {
+                cout << "i cannot icp" << endl;
+                return reset(), false;
+            }
+            else{
+                cout << "succesfull icp" << endl;
+            }
+
 
 #endif
-        if (!ok) {
-            cout << "i cannot icp" << endl;
-            return reset(), false;
-        }
-        else{
-            cout << "succesfull icp" << endl;
-        }
-
     }
 
     poses_.push_back(poses_.back() * affine); // curr -> global
@@ -254,6 +263,7 @@ bool kfusion::KinFu::operator()(const kfusion::cuda::Depth& depth, const kfusion
     float rnorm = (float)cv::norm(affine.rvec());
     float tnorm = (float)cv::norm(affine.translation());
     bool integrate = (rnorm + tnorm)/2 >= p.tsdf_min_camera_movement;
+    std::cout << "integrate:" << integrate <<std::endl;
     if (integrate)
     {
         //ScopeTime time("tsdf");

@@ -4,6 +4,7 @@
 #include <opencv2/viz/vizcore.hpp>
 #include <kfusion/kinfu.hpp>
 #include <io/capture.hpp>
+#include <fstream>
 
 using namespace kfusion;
 
@@ -66,12 +67,16 @@ struct KinFuApp
         //viz.showWidget("cloud", cv::viz::WPaintedCloud(cloud_host));
     }
 
+
+
+
     bool execute()
     {
         KinFu& kinfu = *kinfu_;
         cv::Mat depth, image;
         double time_ms = 0;
         bool has_image = false;
+        Affine3f transformation;
 
         for (int i = 0; !exit_ && !viz.wasStopped(); ++i)
         {
@@ -83,7 +88,7 @@ struct KinFuApp
 
             {
                 SampledScopeTime fps(time_ms); (void)fps;
-                has_image = kinfu(depth_device_);
+                has_image = kinfu(depth_device_,transformation);
             }
 
             if (has_image)
